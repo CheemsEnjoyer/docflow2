@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(test:*)",
+      "Bash(python -c:*)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(python test_extraction.py:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(py -3.12 -m alembic:*)",
+      "Bash(py -3.12 -c:*)",
+      "Bash(python -m uvicorn:*)"
+    ]
+  }
+}
