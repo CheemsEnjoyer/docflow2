@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_admin
 from app.models.user import UserRole
 from app.core.config import settings
-from app.services.vectorstore_service import vectorstore_service
+from app.services.semantic_index_service import semantic_index_service
 from app.services.llm_service import llm_service
 from app.schemas.search import SearchResponse, SearchResult
 
@@ -27,10 +27,10 @@ async def semantic_search(
     current_user=Depends(get_current_user)
 ):
     """
-    Perform semantic search across documents using LangChain.
+    Perform semantic search across documents.
 
-    1. Performs vector similarity search using LangChain PGVector
-    2. Optionally reranks results using LLM via LCEL
+    1. Performs semantic similarity search using PGVector
+    2. Optionally reranks results using LLM
 
     Returns documents sorted by relevance.
     """
@@ -42,11 +42,11 @@ async def semantic_search(
         filter_dict = {**(filter_dict or {}), "user_id": str(current_user.id)}
 
     # Get more candidates if reranking is enabled
-    search_limit = settings.SEARCH_CANDIDATES if use_rerank else limit
+    search_limit = settings.SEMANTIC_SEARCH_CANDIDATES if use_rerank else limit
 
     try:
         # LangChain similarity search
-        results = vectorstore_service.similarity_search(
+        results = semantic_index_service.similarity_search(
             query,
             k=search_limit,
             filter_metadata=filter_dict
@@ -54,7 +54,7 @@ async def semantic_search(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Vector search failed: {str(e)}"
+            detail=f"Semantic search failed: {str(e)}"
         )
 
     if not results:
@@ -128,8 +128,8 @@ def search_stats(current_user=Depends(get_current_user)):
     return {
         "embedding_model": settings.EMBEDDING_MODEL,
         "rerank_enabled": llm_service.is_configured,
-        "rerank_model": settings.LLM_RERANK_MODEL if llm_service.is_configured else None,
-        "vectorstore": "LangChain PGVector",
+        "rerank_model": getattr(settings, "LLM_RERANK_MODEL", llm_service.MODEL) if llm_service.is_configured else None,
+        "semantic_index": "LangChain PGVector",
     }
 
 
@@ -140,9 +140,9 @@ async def reindex_documents(
     current_user=Depends(require_admin)
 ):
     """
-    Reindex documents that are not in the vector store.
+    Reindex documents in semantic index.
 
-    This endpoint fetches documents from the database and adds them to LangChain vectorstore.
+    This endpoint fetches documents from the database and adds them to LangChain PGVector index.
     """
     from app.models.processed_document import ProcessedDocument
     from app.models.processing_run import ProcessingRun
@@ -176,7 +176,7 @@ async def reindex_documents(
                 run = doc.processing_run
                 document_type = run.document_type if run else None
 
-                vectorstore_service.add_document(
+                semantic_index_service.add_document(
                     document_id=doc.id,
                     text=raw_text,
                     metadata={

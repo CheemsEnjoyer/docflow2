@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     DEEPSEEK_CLEAN_MARKDOWN: bool = True
     OCR_LOG_PREVIEW_CHARS: int = 500
 
-    # RAG / Semantic Search
+    # Semantic indexing / search
     EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
-    SEARCH_CANDIDATES: int = 20
-    SEARCH_RERANK_TOP_K: int = 5
+    SEMANTIC_SEARCH_CANDIDATES: int = 20
+    SEMANTIC_RERANK_TOP_K: int = 5
 
     # OpenRouter API (Qwen2.5-VL)
     OPENROUTER_API_KEY: str = "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"

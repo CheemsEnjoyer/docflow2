@@ -8,7 +8,7 @@ celery_app = Celery(
     "docflow",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.document_tasks"]
+    include=["app.tasks.document_tasks", "app.tasks.trigger_tasks"]
 )
 
 # Celery configuration
@@ -25,4 +25,10 @@ celery_app.conf.update(
     task_acks_late=True,  # Acknowledge after task completion
     task_reject_on_worker_lost=True,
     result_expires=3600,  # Results expire after 1 hour
+    beat_schedule={
+        "scan-folder-triggers": {
+            "task": "scan_folder_triggers",
+            "schedule": 30.0,  # Every 30 seconds
+        },
+    },
 )

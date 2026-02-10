@@ -10,7 +10,7 @@ from typing import Optional
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.services import ocr_service
-from app.services.vectorstore_service import vectorstore_service
+from app.services.semantic_index_service import semantic_index_service
 from app.services.storage_service import storage_service
 from app.crud import processing_run as run_crud
 from app.crud import document_type as document_type_crud
@@ -104,7 +104,7 @@ def process_document_task(
         if raw_text:
             try:
                 document = run_crud.get_processed_document(db, doc_uuid)
-                vectorstore_service.add_document(
+                semantic_index_service.add_document(
                     document_id=doc_uuid,
                     text=raw_text,
                     metadata={
@@ -118,7 +118,7 @@ def process_document_task(
                     },
                 )
             except Exception as e:
-                print(f"Failed to index document {document_id} in vectorstore: {e}")
+                print(f"Failed to index document {document_id} in semantic index: {e}")
 
         run_crud.update_processing_run_status(db, run_uuid, ProcessingStatus.NEEDS_REVIEW)
 

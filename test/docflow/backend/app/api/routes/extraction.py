@@ -17,7 +17,7 @@ from app.core.security import get_current_user
 from app.core.config import settings
 from app.core.celery_app import celery_app
 from app.services import ocr_service
-from app.services.vectorstore_service import vectorstore_service
+from app.services.semantic_index_service import semantic_index_service
 from app.crud import processing_run as run_crud
 from app.crud import document_type as document_type_crud
 from app.schemas.extraction import (
@@ -244,7 +244,7 @@ async def extract_and_save(
                 raw_text = result.get("rawText", "")
                 if raw_text:
                     try:
-                        vectorstore_service.add_document(
+                        semantic_index_service.add_document(
                             document_id=document.id,
                             text=raw_text,
                             metadata={
@@ -258,7 +258,7 @@ async def extract_and_save(
                             },
                         )
                     except Exception as e:
-                        print(f"Failed to index document {document.id} in vectorstore: {e}")
+                        print(f"Failed to index document {document.id} in semantic index: {e}")
 
                 run_crud.update_processing_run_status(db, processing_run.id, ProcessingStatus.NEEDS_REVIEW)
                 db.refresh(processing_run)
@@ -400,12 +400,10 @@ async def extract_and_save_auto(
                 text_for_extraction = result.get("rawText") or result.get("rawTextRaw") or ""
                 extracted_fields = []
                 if fields_to_extract:
-                    single_fields, table_groups = ocr_service._parse_field_specs(fields_to_extract)
-                    extracted_fields = ocr_service.extract_fields_with_llm(
+                    extracted_fields = ocr_service.extract_fields_with_llm_resilient(
                         text_for_extraction,
-                        single_fields,
+                        fields_to_extract,
                         result.get("jsonContent", {}),
-                        table_groups=table_groups,
                         document_type_id=str(document_type_id),
                     )
 
@@ -442,7 +440,7 @@ async def extract_and_save_auto(
                 raw_text = result.get("rawText", "")
                 if raw_text:
                     try:
-                        vectorstore_service.add_document(
+                        semantic_index_service.add_document(
                             document_id=document.id,
                             text=raw_text,
                             metadata={
@@ -456,7 +454,7 @@ async def extract_and_save_auto(
                             },
                         )
                     except Exception as e:
-                        print(f"Failed to index document {document.id} in vectorstore: {e}")
+                        print(f"Failed to index document {document.id} in semantic index: {e}")
 
                 run_crud.update_processing_run_status(db, processing_run.id, ProcessingStatus.NEEDS_REVIEW)
                 db.refresh(processing_run)

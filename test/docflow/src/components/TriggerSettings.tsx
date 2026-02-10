@@ -61,7 +61,6 @@ export const TriggerSettings: React.FC<TriggerSettingsProps> = ({ userId }) => {
       const created = await triggerApi.create({
         user_id: userId,
         folder: newFolderPath.trim(),
-        type: 'folder',
         enabled: false,
       });
       setTriggers((prev) => [...prev, created]);

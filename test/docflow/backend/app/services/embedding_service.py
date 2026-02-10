@@ -27,7 +27,7 @@ class EmbeddingService:
 
     @property
     def embeddings(self):
-        """Get LangChain embeddings instance for use with VectorStore."""
+        """Get LangChain embeddings instance for use with semantic index."""
         self._ensure_loaded()
         return self._embeddings
 

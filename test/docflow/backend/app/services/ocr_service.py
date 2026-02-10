@@ -4,6 +4,7 @@ import json
 import tempfile
 import shutil
 import asyncio
+import html
 from pathlib import Path
 from app.core.config import settings
 from app.services.document_converter import (
@@ -110,6 +111,186 @@ def _parse_field_specs(fields_to_extract: list[str]) -> tuple[list[str], dict[st
                 single_fields.append(raw_field)
 
     return single_fields, table_groups
+
+
+def _strip_html_text(value: str) -> str:
+    cleaned = re.sub(r"<[^>]+>", "", value or "", flags=re.IGNORECASE)
+    cleaned = html.unescape(cleaned).replace("\xa0", " ")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _normalize_label(value: str) -> str:
+    value = _strip_html_text(value).lower()
+    value = re.sub(r"[^0-9a-zа-яё ]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def _split_tokens(value: str) -> set[str]:
+    return {t for t in _normalize_label(value).split(" ") if len(t) > 1}
+
+
+def _header_match_score(requested: str, header: str) -> float:
+    req_norm = _normalize_label(requested)
+    hdr_norm = _normalize_label(header)
+    if not req_norm or not hdr_norm:
+        return 0.0
+    if req_norm == hdr_norm:
+        return 1.0
+    if req_norm in hdr_norm or hdr_norm in req_norm:
+        return 0.9
+
+    req_tokens = _split_tokens(req_norm)
+    hdr_tokens = _split_tokens(hdr_norm)
+    if not req_tokens or not hdr_tokens:
+        return 0.0
+
+    overlap = len(req_tokens & hdr_tokens) / max(1, len(req_tokens))
+    return overlap
+
+
+def _looks_like_numbering_row(cells: list[str]) -> bool:
+    if not cells:
+        return False
+    marker_pattern = re.compile(r"^\s*(\d+[a-zа-я]?|[-—]+)\s*$", re.IGNORECASE)
+    markers = sum(1 for c in cells if marker_pattern.match(c or ""))
+    return markers >= max(2, int(len(cells) * 0.6))
+
+
+def _parse_tables_from_html(raw_text: str) -> list[list[list[str]]]:
+    tables: list[list[list[str]]] = []
+    if not raw_text:
+        return tables
+
+    table_html_list = re.findall(r"<table[\s\S]*?</table>", raw_text, flags=re.IGNORECASE)
+    for table_html in table_html_list:
+        rows_html = re.findall(r"<tr[^>]*>([\s\S]*?)</tr>", table_html, flags=re.IGNORECASE)
+        rows: list[list[str]] = []
+        for row_html in rows_html:
+            cells_html = re.findall(r"<t[dh][^>]*>([\s\S]*?)</t[dh]>", row_html, flags=re.IGNORECASE)
+            cells = [_strip_html_text(cell) for cell in cells_html]
+            if cells:
+                rows.append(cells)
+        if rows:
+            tables.append(rows)
+    return tables
+
+
+def _extract_table_fields_from_html(
+    raw_text: str,
+    table_groups: dict[str, list[str]],
+) -> list[dict]:
+    """
+    Deterministic fallback for table extraction.
+    Parses HTML tables from OCR text and maps requested columns to headers by fuzzy match.
+    """
+    if not raw_text or not table_groups:
+        return []
+
+    parsed_tables = _parse_tables_from_html(raw_text)
+    if not parsed_tables:
+        return []
+
+    extracted: list[dict] = []
+
+    for group_name, requested_columns in table_groups.items():
+        row_index = 0
+        for table_rows in parsed_tables:
+            if len(table_rows) < 2:
+                continue
+
+            headers = table_rows[0]
+            data_start = 1
+            if len(table_rows) > 1 and _looks_like_numbering_row(table_rows[1]):
+                data_start = 2
+
+            column_indexes: dict[str, int | None] = {}
+            for req_col in requested_columns:
+                best_idx = None
+                best_score = 0.0
+                for idx, header in enumerate(headers):
+                    score = _header_match_score(req_col, header)
+                    if score > best_score:
+                        best_score = score
+                        best_idx = idx
+                # Require at least weak overlap to avoid random mappings.
+                column_indexes[req_col] = best_idx if best_score >= 0.25 else None
+
+            for row in table_rows[data_start:]:
+                if not any((cell or "").strip() for cell in row):
+                    continue
+
+                for req_col in requested_columns:
+                    idx = column_indexes.get(req_col)
+                    value = "Не найдено"
+                    if idx is not None and idx < len(row):
+                        cell_value = (row[idx] or "").strip()
+                        if cell_value:
+                            value = cell_value
+
+                    extracted.append(
+                        {
+                            "name": req_col,
+                            "value": value,
+                            "confidence": 0.6,
+                            "coordinate": None,
+                            "group": group_name,
+                            "row_index": row_index,
+                        }
+                    )
+                row_index += 1
+
+    return extracted
+
+
+def extract_fields_with_llm_resilient(
+    text: str,
+    fields_to_extract: list[str],
+    json_content: dict,
+    document_type_id: str | None = None,
+) -> list[dict]:
+    """
+    Extract scalar and table fields in separate LLM calls so table parsing
+    failures do not wipe out scalar extraction.
+    """
+    single_fields, table_groups = _parse_field_specs(fields_to_extract or [])
+    extracted_fields: list[dict] = []
+
+    if single_fields:
+        try:
+            scalar_fields = extract_fields_with_llm(
+                text,
+                single_fields,
+                json_content,
+                table_groups=None,
+                document_type_id=document_type_id,
+            )
+            extracted_fields.extend(scalar_fields or [])
+        except Exception as e:
+            print(f"Scalar field extraction failed: {e}")
+
+    if table_groups:
+        try:
+            table_fields = extract_fields_with_llm(
+                text,
+                [],
+                json_content,
+                table_groups=table_groups,
+                document_type_id=document_type_id,
+            )
+            extracted_fields.extend(table_fields or [])
+        except Exception as e:
+            print(f"Table field extraction failed: {e}")
+
+        has_table_rows = any(item.get("group") for item in extracted_fields)
+        if not has_table_rows:
+            fallback_table_fields = _extract_table_fields_from_html(text, table_groups)
+            if fallback_table_fields:
+                print(f"Table fallback extracted {len(fallback_table_fields)} cells from HTML table")
+                extracted_fields.extend(fallback_table_fields)
+
+    return extracted_fields
 
 
 def _parse_deepseek_grounding(ocr_result: str, img_width: int, img_height: int) -> list[dict]:
@@ -380,15 +561,12 @@ def extract_document(file_path: str, fields_to_extract: list[str] = None, docume
         # Extract fields using LLM
         extracted_fields = []
         if fields_to_extract:
-            single_fields, table_groups = _parse_field_specs(fields_to_extract)
-            if single_fields or table_groups:
-                extracted_fields = extract_fields_with_llm(
-                    markdown_content,
-                    single_fields,
-                    all_json_content,
-                    table_groups=table_groups,
-                    document_type_id=document_type_id
-                )
+            extracted_fields = extract_fields_with_llm_resilient(
+                markdown_content,
+                fields_to_extract,
+                all_json_content,
+                document_type_id=document_type_id,
+            )
 
         # Cleanup output directory
         shutil.rmtree(output_dir, ignore_errors=True)

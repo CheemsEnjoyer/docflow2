@@ -290,7 +290,7 @@ def update_extracted_field(
             else:
                 augmented_text = raw_text
 
-            from app.services.vectorstore_service import vectorstore_service
+            from app.services.semantic_index_service import semantic_index_service
 
             run = db_doc.processing_run
             document_type = run.document_type if run else None
@@ -303,9 +303,9 @@ def update_extracted_field(
                 "status": db_doc.status.value,
                 "created_at": db_doc.created_at.isoformat() if db_doc.created_at else "",
             }
-            vectorstore_service.update_document(db_doc.id, augmented_text, metadata)
+            semantic_index_service.update_document(db_doc.id, augmented_text, metadata)
     except Exception as e:
-        print(f"Failed to update vectorstore for document {db_doc.id}: {e}")
+        print(f"Failed to update semantic index for document {db_doc.id}: {e}")
 
     return db_doc
 

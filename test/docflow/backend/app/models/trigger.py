@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import TimestampMixin, UUIDMixin
@@ -12,6 +12,7 @@ class Trigger(Base, UUIDMixin, TimestampMixin):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     enabled = Column(Boolean, default=False, nullable=False)
     folder = Column(String(500), nullable=True)
+    processed_files = Column(JSONB, default=list, server_default="[]", nullable=False)
 
     user = relationship("User", back_populates="triggers")
 
