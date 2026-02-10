@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # OCR Settings
     USE_GPU: bool = True
-    OCR_ENGINE: str = "deepseek"  # "deepseek" или "paddle"
+    OCR_ENGINE: str = "deepseek"
     DEEPSEEK_MODEL: str = "deepseek-ai/DeepSeek-OCR-2"
     DEEPSEEK_BASE_SIZE: int = 1024
     DEEPSEEK_IMAGE_SIZE: int = 768
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     SEMANTIC_RERANK_TOP_K: int = 5
 
     # OpenRouter API (Qwen2.5-VL)
-    OPENROUTER_API_KEY: str = "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"
+    OPENROUTER_API_KEY: str = ""
 
     # Celery + Redis
     REDIS_URL: str = "redis://localhost:6379/0"
