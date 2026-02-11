@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/docflow"
+    DATABASE_URL: str = ""
 
     # App
     APP_NAME: str = "Document Extraction API"
@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "docflow"
     S3_REGION: str = "us-east-1"
     S3_ENDPOINT_URL: str = "http://localhost:9000"
-    S3_ACCESS_KEY_ID: str = "minioadmin"
-    S3_SECRET_ACCESS_KEY: str = "minioadmin"
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
     S3_USE_SSL: bool = False
     S3_ADDRESSING_STYLE: str = "path"
 
