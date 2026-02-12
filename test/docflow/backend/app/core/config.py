@@ -49,9 +49,8 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
     class Config:
-        env_file = ["../.env", ".env"]  # Ищем .env в родительской папке и текущей
+        env_file = ["../.env", ".env"]
         case_sensitive = True
-        extra = "ignore"  # Игнорировать переменные из .env, которых нет в Settings
-
+        extra = "ignore"
 
 settings = Settings()
