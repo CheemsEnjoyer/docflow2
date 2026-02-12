@@ -122,7 +122,7 @@ async def extract_document(
 
         try:
             if not ocr_service.is_paddle_initialized():
-                raise HTTPException(status_code=500, detail="PaddleOCR ?? ???????????????")
+                raise HTTPException(status_code=500, detail="OCR engine is not initialized")
 
             result = ocr_service.extract_document(filepath, fields_to_extract)
 
@@ -203,7 +203,7 @@ async def extract_and_save(
             if not ocr_service.is_paddle_initialized():
                 run_crud.update_processing_run_status(db, processing_run.id, ProcessingStatus.ERROR)
                 run_crud.update_document_status(db, document.id, DocumentStatus.ERROR)
-                raise HTTPException(status_code=500, detail="PaddleOCR ?? ???????????????")
+                raise HTTPException(status_code=500, detail="OCR engine is not initialized")
 
             result = ocr_service.extract_document(temp_filepath, fields_to_extract, document_type_id=str(document_type_id))
 
@@ -308,7 +308,7 @@ async def extract_document_json(
 
         try:
             if not ocr_service.is_paddle_initialized():
-                raise HTTPException(status_code=500, detail="PaddleOCR ?? ???????????????")
+                raise HTTPException(status_code=500, detail="OCR engine is not initialized")
 
             result = ocr_service.extract_document(filepath, fields_to_extract)
 

@@ -250,7 +250,7 @@ export const ProcessingHistory: React.FC<ProcessingHistoryProps> = ({
               label="С"
               value={dateFrom}
               onChange={(newValue) => setDateFrom(newValue)}
-              format="дд.мм.гг"
+              format="DD.MM.YYYY"
               slotProps={{
                 textField: {
                   size: 'small',
@@ -292,7 +292,7 @@ export const ProcessingHistory: React.FC<ProcessingHistoryProps> = ({
               label="По"
               value={dateTo}
               onChange={(newValue) => setDateTo(newValue)}
-              format="дд.мм.гг"
+              format="DD.MM.YYYY"
               minDate={dateFrom || undefined}
               slotProps={{
                 textField: {
