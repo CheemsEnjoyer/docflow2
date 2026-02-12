@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/docflow"
+    DATABASE_URL: str = ""
 
     # App
     APP_NAME: str = "Document Extraction API"
@@ -21,14 +21,14 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "docflow"
     S3_REGION: str = "us-east-1"
     S3_ENDPOINT_URL: str = "http://localhost:9000"
-    S3_ACCESS_KEY_ID: str = "minioadmin"
-    S3_SECRET_ACCESS_KEY: str = "minioadmin"
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
     S3_USE_SSL: bool = False
     S3_ADDRESSING_STYLE: str = "path"
 
     # OCR Settings
     USE_GPU: bool = True
-    OCR_ENGINE: str = "deepseek"  # "deepseek" или "paddle"
+    OCR_ENGINE: str = "deepseek"
     DEEPSEEK_MODEL: str = "deepseek-ai/DeepSeek-OCR-2"
     DEEPSEEK_BASE_SIZE: int = 1024
     DEEPSEEK_IMAGE_SIZE: int = 768
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     SEMANTIC_RERANK_TOP_K: int = 5
 
     # OpenRouter API (Qwen2.5-VL)
-    OPENROUTER_API_KEY: str = "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"
+    OPENROUTER_API_KEY: str = ""
 
     # Celery + Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -49,9 +49,8 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
     class Config:
-        env_file = ["../.env", ".env"]  # Ищем .env в родительской папке и текущей
+        env_file = ["../.env", ".env"]
         case_sensitive = True
-        extra = "ignore"  # Игнорировать переменные из .env, которых нет в Settings
-
+        extra = "ignore"
 
 settings = Settings()
